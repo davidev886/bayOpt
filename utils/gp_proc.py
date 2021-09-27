@@ -18,6 +18,7 @@ def Kmatrix(A, B, sigma=1, ell=1):
 def gaussian_process(X, f, Xs, Kmatrix, params={'sigma': 1, 'ell': 1}):
     sigma = params['sigma']
     ell = params['ell']
+
     K_XX = Kmatrix(X, X, sigma, ell)
     K_XXs = Kmatrix(Xs, X, sigma, ell)
     K_XsXs = Kmatrix(Xs, Xs, sigma, ell)
@@ -43,4 +44,4 @@ def acq_function(Xs, X, fv, y_best, Kmatrix, params_kernel):
 
         AFun.append(new_sigma[0, 0] * (pdf + (y_best - new_mean[0])/new_sigma[0, 0] * cdf))
 
-    return AFun
+    return np.array(AFun)

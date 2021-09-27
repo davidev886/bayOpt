@@ -23,7 +23,6 @@ yi_array = []
 xi_array = []
 for i in range(Nwarmup):
     x_i = 2 * np.random.random() - 1
-    x_i = XI[i]
     y_i = f(x_i)
 
     if y_i <= y_best:

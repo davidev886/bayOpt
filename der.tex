@@ -1,0 +1,24 @@
+\documentclass[11pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for rotated page geometry
+%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}				% Use pdf, png, jpg, or eps§ with pdflatex; use eps in DVI mode
+								% TeX will automatically convert eps --> pdf in pdflatex		
+\usepackage{amssymb}
+
+
+\begin{document}
+\begin{itemize}
+\item $X = (x_1, \dots, x_n)^T$ are the observations. Each $x_j$ is a $D$-dimensional row vector.
+\item $x^*$ test point. $x^*$ is itself a $D$-dimensional row vector
+\item $K(X, x^*)$ kernel: $(n \times 1)$ matrix
+\item $\frac{\partial K(X, x^*)}{\partial x^*}$ kernel derivative: $(n \times D)$ matrix given by
+\begin{equation}
+\frac{\partial K(X, x^*)}{\partial x^*} = \frac{(X - x^*)}{\ell^2} * K(X, X^*)
+\end{equation}
+where $(X - x^*) = (x_1 - x^*, \dots, x_n - x^*)^T$ and $*$ is the element wise product in python.
+\end{itemize}
+
+
+\end{document}  

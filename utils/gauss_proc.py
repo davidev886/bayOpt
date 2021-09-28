@@ -4,26 +4,43 @@ import scipy
 from scipy.stats import norm as gaussian_normal
 
 
-def Kmatrix(A, B, sigma=1, ell=1):
+def Kmatrix(A, B, params={'sigma': 1, 'ell': 1}):
     """Exponentiated quadratic kernel:
         returns a list that has len(A) rows and len(B) columns
     """
-
+    sigma = params['sigma']
+    ell = params['ell']
     A = np.array(A)
     B = np.array(B)
 
     kernel_matrix = [[sigma**2 * np.exp(-norm(xa - xb)**2 / (2 * ell**2))
                      for xb in B]
                      for xa in A]
-    return kernel_matrix
+
+    return np.array(kernel_matrix)
+
+def der_Kmatrix(A, B, params={'sigma': 1, 'ell': 1}):
+    """Derivative of the exponentiated quadratic kernel:
+       returns the derivative of the kernel wrt the matrix B
+    """
+
+    K_AB = Kmatrix(A, B, params)
+    sigma = params['sigma']
+    ell = params['ell']
+    A = np.array(A)
+    B = np.array(B)
+    w = (A - B).reshape(A.shape)
+
+    derivative_matrix = w * K_AB / ell**2
+
+    return derivative_matrix
 
 
 def gaussian_process(X, f, Xs, Kmatrix, params={'sigma': 1, 'ell': 1}):
-    sigma = params['sigma']
-    ell = params['ell']
-    K_XX = Kmatrix(X, X, sigma, ell)
-    K_XXs = Kmatrix(X, Xs, sigma, ell)
-    K_XsXs = Kmatrix(Xs, Xs, sigma, ell)
+    K_XX = Kmatrix(X, X, params)
+    K_XXs = Kmatrix(X, Xs, params)
+    print("K_XXs", K_XXs)
+    K_XsXs = Kmatrix(Xs, Xs, params)
     # solve for w in the system K(X,X) w = K(X, Xs)
     # then consider w^T = K(Xs, X).K(X, X)^-1
     # for computing the new mean and new variance

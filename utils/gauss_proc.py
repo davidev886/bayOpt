@@ -65,14 +65,17 @@ class gaussian_process(object):
 
     def der_mean(self, Xs):
         DK_XXs = der_Kmatrix(self.X, Xs, self.params)
-
-        # solve for w in the system K(X,X) w = K(X, Xs)
-        # then consider w^T = K(Xs, X).K(X, X)^-1
-        # for computing the new mean and new variance
         solved_w = scipy.linalg.solve(self.K_XX, DK_XXs, assume_a='pos')
         der_mean = solved_w.T @ self.f
-
         return der_mean
+
+    def der_variance(self, Xs):
+        K_XXs = self.Kmatrix(self.X, Xs, self.params)
+        DK_XXs = der_Kmatrix(self.X, Xs, self.params)
+        solved_w = scipy.linalg.solve(self.K_XX, DK_XXs, assume_a='pos')
+        new_sigma_temp = - solved_w.T @ K_XXs
+
+        return new_sigma_temp.reshape(-1,)
 
     def acq_function(self, Xs, fv, y_best):
         new_mean, new_sigma = self.predict([Xs])

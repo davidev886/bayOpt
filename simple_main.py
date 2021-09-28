@@ -21,7 +21,7 @@ number_of_functions = 6
 x = np.linspace(-4, 4, dimX)
 Xs = np.array(list(product(*[x for _ in range(D)])))
 
-Sigma0 = Kmatrix(Xs, Xs)
+Sigma0 = Kmatrix_gaussian(Xs, Xs)
 
 if D == 3:
     X = np.array([[4, 4, 4], [0, 0, 0]])
@@ -45,16 +45,35 @@ print(w)
 print("w.shape", w.shape)
 print("np.array(X).shape", np.array(X).shape)
 
-new_mean, new_sigma = gaussian_process(X, f, [Xs], Kmatrix, params=params_kernel)
 
-print(Kmatrix(X, [Xs], params_kernel))
-print()
-print(w * Kmatrix(X, [Xs], params_kernel) / 3.25**2)
+gp = gaussian_process(X, f, params=params_kernel)
 
+print("KXX")
+print(np.array(Kmatrix_gaussian(X, X, params_kernel)))
+
+
+print("KXXs")
+print(Kmatrix_gaussian(X, [Xs], params_kernel))
+print("derivative KXXs")
+print(w * Kmatrix_gaussian(X, [Xs], params_kernel) / 3.25**2)
 print(der_Kmatrix(X, [Xs], params_kernel))
+print("----")
+
+
+print("Kmatrix_gaussian(X, X, params_kernel)")
+print(Kmatrix_gaussian(X, X, params_kernel))
+
+
+print("gp.der_mean([Xs])")
+print(gp.der_mean([Xs]))
+print(gp.der_variance([Xs]))
+
+new_mean, new_sigma = gp.predict([Xs])
+
+
+
+
 exit()
-
-
 new_ys = np.random.multivariate_normal(
     mean=new_mean, cov=new_sigma,
     size=number_of_functions)
@@ -63,7 +82,7 @@ print(new_ys)
 
 
 
-exit()
+
 # warm up stage
 Nwarmup = 2
 y_best = np.inf

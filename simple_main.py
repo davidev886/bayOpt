@@ -10,8 +10,8 @@ np.set_printoptions(precision=4, sign="+")
 params_kernel = {'sigma': 1, 'ell': 3.25}
 
 
-def f(x):
-    return np.sin(np.pi * x / 2)**2 + 1
+# def func(x):
+#     return np.sin(np.pi * x / 2)**2 + 1
 
 D = 2
 
@@ -70,9 +70,9 @@ print(gp.der_variance([Xs]))
 
 new_mean, new_sigma = gp.predict([Xs])
 
-
-
-
+AFun = gp.acq_function(Xs, 0.1)
+AFun = gp.acq_function(Xs, 0.2)
+print(AFun)
 exit()
 new_ys = np.random.multivariate_normal(
     mean=new_mean, cov=new_sigma,
@@ -104,15 +104,6 @@ for i in range(Nwarmup):
 
 X = xi_array
 fv = yi_array
-
-AFun = acq_function([0], X, fv, y_best, Kmatrix, params_kernel)
-
-print(AFun)
-exit()
-NumXs = 40
-Xs = np.linspace(-1, 1, NumXs + 1)
-AFun = acq_function(Xs, X, fv, y_best, Kmatrix, params_kernel)
-
 
 
 plt.plot(Xs, AFun)

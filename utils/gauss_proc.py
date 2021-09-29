@@ -72,8 +72,12 @@ class gaussian_process(object):
     def der_variance(self, Xs):
         K_XXs = self.Kmatrix(self.X, Xs, self.params)
         DK_XXs = der_Kmatrix(self.X, Xs, self.params)
-        solved_w = scipy.linalg.solve(self.K_XX, DK_XXs, assume_a='pos')
-        new_sigma_temp = - solved_w.T @ K_XXs
+        solved_w = scipy.linalg.solve(self.K_XX, K_XXs, assume_a='pos')
+        solved_w_der = scipy.linalg.solve(self.K_XX, DK_XXs, assume_a='pos')
+        new_sigma_temp = - (solved_w_der.T @ K_XXs).T - solved_w.T @ DK_XXs
+        print("------------")
+        print("solved_w_der.T @ K_XXs", solved_w_der.T @ K_XXs)
+        print("solved_w.T @ DK_XXs", solved_w.T @ DK_XXs)
 
         return new_sigma_temp.reshape(-1,)
 

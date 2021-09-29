@@ -40,12 +40,14 @@ class gaussian_process(object):
     def __init__(self,
                  X,
                  f,
-                 Kmatrix=Kmatrix_gaussian,
+                 kernel='RBF',
                  params={'sigma': 1, 'ell': 1}
                  ):
         self.X = X
         self.f = f
-        self.Kmatrix = Kmatrix
+        if kernel == 'RBF':
+            self.Kmatrix = Kmatrix_gaussian
+
         self.K_XX = self.Kmatrix(X, X, params)
         self.params = params
         return None
@@ -75,28 +77,36 @@ class gaussian_process(object):
         solved_w = scipy.linalg.solve(self.K_XX, K_XXs, assume_a='pos')
         solved_w_der = scipy.linalg.solve(self.K_XX, DK_XXs, assume_a='pos')
         new_sigma_temp = - (solved_w_der.T @ K_XXs).T - solved_w.T @ DK_XXs
-        print("------------")
-        print("solved_w_der.T @ K_XXs", solved_w_der.T @ K_XXs)
-        print("solved_w.T @ DK_XXs", solved_w.T @ DK_XXs)
-
         return new_sigma_temp.reshape(-1,)
 
-    def acq_function(self, Xs, fv, y_best):
+    def acq_function(self, Xs, y_best):
         new_mean, new_sigma = self.predict([Xs])
 
-        cdf = gaussian_normal.cdf(x=(y_best - new_mean[0])/new_sigma[0, 0])
-        pdf = gaussian_normal.pdf(x=(y_best - new_mean[0])/new_sigma[0, 0])
+        mu = new_mean[0]
+        sigma = new_sigma[0, 0]
 
-        AFun = new_sigma[0, 0] * (pdf +
-                                  (y_best - new_mean[0])/new_sigma[0, 0] * cdf)
+        cdf = gaussian_normal.cdf(x=(y_best - mu)/sigma)
+        pdf = gaussian_normal.pdf(x=(y_best - mu)/sigma)
+
+        AFun = sigma * (pdf + (y_best - mu)/sigma * cdf)
         return AFun
 
-    def acq_function_optimize(self, Xs, fv, y_best):
-        new_mean, new_sigma = self.predict([Xs])
-
-        cdf = gaussian_normal.cdf(x=(y_best - new_mean[0])/new_sigma[0, 0])
-        pdf = gaussian_normal.pdf(x=(y_best - new_mean[0])/new_sigma[0, 0])
-
-        AFun = new_sigma[0, 0] * (pdf +
-                                  (y_best - new_mean[0])/new_sigma[0, 0] * cdf)
+    def acq_function_optimize(self, Xs, y_best):
+        AFun = self.acq_function(Xs, y_best)
         return -AFun
+
+#     def der_acq_function_optimize(self, Xs, fv, y_best):
+#         new_mean, new_sigma = self.predict([Xs])
+#         mu = new_mean[0]
+#         sigma = new_sigma[0, 0]
+#
+#         cdf = gaussian_normal.cdf(x=(y_best - mu)/sigma)
+#         pdf = gaussian_normal.pdf(x=(y_best - mu)/sigma)
+#
+#         z = (y_best - new_mean) / new_sigma
+#
+#
+#
+#         AFun = new_sigma[0, 0] * (pdf +
+#            (y_best - new_mean[0])/new_sigma[0, 0] * cdf)
+#         return -AFun

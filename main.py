@@ -6,21 +6,22 @@ from scipy.optimize import minimize
 
 
 from utils.gauss_proc import *
-from utils.qaoa import *
+from utils.qaoa_pulser import *
 
-np.random.seed(6)
+np.random.seed(12)
 np.set_printoptions(precision=4, sign="+", suppress=True)
 
-params_kernel = {'sigma': 1, 'ell': 1000}
+params_kernel = {'sigma': 1, 'ell': 250}
 
 gamma_range = [1000, 2000]   # extremes where to search for the values of gamma and beta
-beta_range = [500, 1000]
+beta_range = [1000, 2000]
 
-num_level_p = 1
+num_level_p = 8
 
-dimX = 11# number of test points for computing the acquisition function
+Nwarmup = 10
+Nbayes = 90
 
-Nwarmup = 3
+dimX = 11   # number of points for plotting the acquisition function only for p=1
 
 pos = np.array([[0., 0.],
                 [-4, -7],
@@ -29,23 +30,24 @@ pos = np.array([[0., 0.],
                 [-8, 6]]
                )
 
-def plot_acquisition_function(gamma_range, beta_range, dimX, num_level_p):
+
+def plot_acquisition_function(gamma_range, beta_range, dimX, num_level_p, gp, y_best):
     gamma_arr = np.linspace(gamma_range[0], gamma_range[1], dimX)
     beta_arr = np.linspace(beta_range[0], beta_range[1], dimX)
     Xs = np.array(list(product(*[gamma_arr, beta_arr] * num_level_p)))
     AFun = []
     for xs in Xs:
-        AFun.append(acq_function(xs, X_train, y_train, y_best, Kmatrix, params_kernel))
+        AFun.append(gp.acq_function_optimize(xs, y_best))
     AFun = np.array(AFun)
 
     fig = plt.figure()
     plt.imshow(AFun.reshape((dimX, dimX)).T,
-                extent=[min(gamma_arr),max(gamma_arr),min(beta_arr),max(beta_arr)],
-                origin="lower")
+               extent=[min(gamma_arr), max(gamma_arr),
+                       min(beta_arr), max(beta_arr)],
+               origin="lower")
 
     plt.xlabel("gamma")
     plt.ylabel("beta")
-
 
     plt.colorbar()
     plt.show()
@@ -85,12 +87,19 @@ for i in range(Nwarmup):
     X_train.append(X)
     y_train.append(Y)
 
+    print("X=", X, X.shape)
+
 print(y_best)
 
 # end - warm up stage
 
+# Bayesian optimization steps
+j_bayes = 0
+j_step = 0
+while j_bayes < Nbayes:
+    j_step += 1
+    gp = gaussian_process(X_train, y_train, params=params_kernel)
 
-if 1:
     gamma_random = np.random.randint(gamma_range[0],
                                      gamma_range[1],
                                      size=num_level_p
@@ -101,42 +110,65 @@ if 1:
 
     x0 = np.array([gamma_random, beta_random]).T.ravel()
 
-
-    res = minimize(acq_function_optimize,
+    res = minimize(gp.acq_function_optimize,
                    x0,
-                   args=(X_train, y_train, y_best, Kmatrix, params_kernel),
-                   method='Nelder-Mead',
-                   options={'disp': True},
+                   args=(y_best),
+                   method='L-BFGS-B',
+                   jac=gp.der_acq_function_optimize,
+                   # options={'disp': True},
                    tol=1e-6)
+#    print(res)
 
-    print(res)
+    X = res.x.astype(int)
+    gammas = X[0::2]
+    betas = X[1::2]
+    # check that the values found for gamma and beta are bigger than 8ns
+    # cond_gamma = (gamma_range[0] <= gammas) & (gammas <= gamma_range[1])
+    # cond_beta = (beta_range[0] <= betas) & (betas <= beta_range[1])
+    cond_gamma = (gammas <= 8)
+    cond_beta = (betas <= 8)
+    if (gammas <= 8).all() or (betas <= 8).all():
+        print(f"{j_step}, {X}, out of range")
+        continue
 
-if num_level_p == 1:
-    plot_acquisition_function(gamma_range, beta_range, dimX, num_level_p)
+    j_bayes += 1
+    Y = apply_qaoa(X, reg, G)
 
+    if Y <= y_best:
+        x_best = X
+        y_best = Y
+        print(f"{j_bayes}, {j_step}, {X}, {Y:+.4f}, accepted")
+    else:
+        print(f"{j_bayes}, {j_step}, {X}, {Y:+.4f}, not accepted")
 
-exit()
+    # if num_level_p == 1:
+    #    plot_acquisition_function(gamma_range, beta_range, dimX, num_level_p, gp, y_best)
 
-
-
-plt.plot(Xs, AFun)
-plt.show()
-
-
-N_train = 10
-N_test = 50  # Number of test elements
-iterations = 1
-gamma_range = [1000,10000]   # extremes where to search for the values of gamma and beta
-beta_range = [1000,10000]
-
-method = 'FD'
-
-#------- TRAIN ON N DATA --------#
-X_train = []   #data
-y_train = []   #label
-
-for i in range(N_train):
-    X = [np.random.randint(gamma_range[0],gamma_range[1]), np.random.randint(beta_range[0],beta_range[1])]
     X_train.append(X)
-    Y = apply_qaoa(X)
     y_train.append(Y)
+
+print(x_best, y_best, f"after {Nwarmup} warmup steps and {j_bayes} bayesian optimization steps")
+
+count_dict,_ = quantum_loop(res.x, reg)
+plot_distribution(count_dict)
+
+
+# if 1:
+#     gamma_random = np.random.randint(gamma_range[0],
+#                                      gamma_range[1],
+#                                      size=num_level_p
+#                                      )
+#     beta_random = np.random.randint(beta_range[0],
+#                                     beta_range[1],
+#                                     size=num_level_p)
+#
+#     x0 = np.array([gamma_random, beta_random]).T.ravel()
+#
+#     res_simplex = minimize(gp.acq_function_optimize,
+#                    x0,
+#                    args=(y_best),
+#                    method='Nelder-Mead',
+#                    options={'disp': True},
+#                    tol=1e-6)
+#
+#     print(res_simplex)

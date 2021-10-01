@@ -66,13 +66,21 @@ print(Kmatrix_gaussian(X, X, params_kernel))
 
 print("gp.der_mean([Xs])")
 print(gp.der_mean([Xs]))
-print(gp.der_variance([Xs]))
+print("bef")
+a = gp.der_variance([Xs])
+print(a)
+print("aff")
 
-new_mean, new_sigma = gp.predict([Xs])
+y_best=0.1
+AFun = gp.acq_function(Xs, y_best)
+dAfun = gp.der_acq_function_optimize(Xs, y_best)
 
-AFun = gp.acq_function(Xs, 0.1)
-AFun = gp.acq_function(Xs, 0.2)
-print(AFun)
+print("AFun=", AFun)
+print("der_AFun=", dAfun)
+
+
+
+
 exit()
 new_ys = np.random.multivariate_normal(
     mean=new_mean, cov=new_sigma,

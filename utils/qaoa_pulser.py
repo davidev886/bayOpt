@@ -38,10 +38,10 @@ def quantum_loop(param, r):
         seq.add(pulse_1, 'ch0')
         seq.add(pulse_2, 'ch0')
     seq.measure('ground-rydberg')
-    simul = Simulation(seq, sampling_rate=.1)
+    simul = Simulation(seq, sampling_rate=.01)
     results = simul.run()
     count_dict = results.sample_final_state(N_samples=1000) #sample from the state vector
-    return count_dict
+    return count_dict, results.states
 
 
 def plot_distribution(C):
@@ -82,6 +82,6 @@ def get_cost(counter,G):
 
 
 def apply_qaoa(param, reg, G):
-    C = quantum_loop(param, r=reg)
+    C, _= quantum_loop(param, r=reg)
     cost = get_cost(C, G)
     return cost

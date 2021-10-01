@@ -122,4 +122,4 @@ class gaussian_process(object):
         dz = (- 1 / sigma * der_mu - z / sigma * der_sigma)
 
         der_AFun = cdf * dz * sigma + (pdf + z * cdf) * der_sigma
-        return der_AFun
+        return der_AFun.reshape(-1,)

@@ -26,7 +26,7 @@ $$ a(z, x^*) = -\sigma(x^*) \ \left[ \phi(z)  + z \Phi(z)\right]$$
 where $$z=\frac{y_\text{best} - \mu(x^*)}{\sigma(x^*)}$$
 
 \item acquisition function derivative
-$$\frac{d{a(z, x^*)}}{d x^*} = \Phi(z) \frac{d z}{d x^*} + \left[\phi(z) +z \Phi(x)\right] \frac{d{\sigma}}{d x^*}$$
+$$\frac{d{a(z, x^*)}}{d x^*} = -\Phi(z) \frac{d z}{d x^*} - \left[\phi(z) +z \Phi(x)\right] \frac{d{\sigma}}{d x^*}$$
 with
 $$ \frac{d z}{d x^*} = -\frac{1}{\sigma} \frac{d \mu}{d x^*} - \frac{y_\text{best} - \mu}{\sigma^2} \frac{d{\sigma}}{d x^*}$$
 \end{itemize}

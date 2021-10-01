@@ -77,9 +77,18 @@ class gaussian_process(object):
         solved_w = scipy.linalg.solve(self.K_XX, K_XXs, assume_a='pos')
         solved_w_der = scipy.linalg.solve(self.K_XX, DK_XXs, assume_a='pos')
         new_sigma_temp = - (solved_w_der.T @ K_XXs).T - solved_w.T @ DK_XXs
-        return new_sigma_temp.reshape(-1,)
+        return new_sigma_temp
 
     def acq_function(self, Xs, y_best):
+        # the acquisition function is
+        # a = - sigma * (pdf(z) + z * cdf(z))
+        # where
+        # z = (y_best - mu) / sigma
+        # y_best is the best value so far obtained in the minimization / maximization
+        # mu and sigma are the expected mean and sigma obtained with the gaussian process
+        # pdf and cdf are the  probability and cumulative distribution function of a
+        # gaussian random variable with mean zero and variance 1
+
         new_mean, new_sigma = self.predict([Xs])
 
         mu = new_mean[0]
@@ -88,25 +97,29 @@ class gaussian_process(object):
         cdf = gaussian_normal.cdf(x=(y_best - mu)/sigma)
         pdf = gaussian_normal.pdf(x=(y_best - mu)/sigma)
 
-        AFun = sigma * (pdf + (y_best - mu)/sigma * cdf)
+        AFun = -1 * sigma * (pdf + (y_best - mu)/sigma * cdf)
         return AFun
 
     def acq_function_optimize(self, Xs, y_best):
+        # Since scipy methods find the minimum, here we want to optimize
+        # the opposite of the acquisition for getting its maximum
         AFun = self.acq_function(Xs, y_best)
         return -AFun
 
-#     def der_acq_function_optimize(self, Xs, fv, y_best):
-#         new_mean, new_sigma = self.predict([Xs])
-#         mu = new_mean[0]
-#         sigma = new_sigma[0, 0]
-#
-#         cdf = gaussian_normal.cdf(x=(y_best - mu)/sigma)
-#         pdf = gaussian_normal.pdf(x=(y_best - mu)/sigma)
-#
-#         z = (y_best - new_mean) / new_sigma
-#
-#
-#
-#         AFun = new_sigma[0, 0] * (pdf +
-#            (y_best - new_mean[0])/new_sigma[0, 0] * cdf)
-#         return -AFun
+    def der_acq_function_optimize(self, Xs, y_best):
+        # derivative of -acquisition function
+        new_mean, new_sigma = self.predict([Xs])
+        mu = new_mean[0]
+        sigma = new_sigma[0, 0]
+        der_mu = self.der_mean([Xs])
+        der_sigma = self.der_variance([Xs])
+
+        cdf = gaussian_normal.cdf(x=(y_best - mu)/sigma)
+        pdf = gaussian_normal.pdf(x=(y_best - mu)/sigma)
+
+        z = (y_best - mu) / sigma
+
+        dz = (- 1 / sigma * der_mu - z / sigma * der_sigma)
+
+        der_AFun = cdf * dz * sigma + (pdf + z * cdf) * der_sigma
+        return der_AFun

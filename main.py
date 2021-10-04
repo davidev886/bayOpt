@@ -21,8 +21,6 @@ num_level_p = 8
 Nwarmup = 10
 Nbayes = 90
 
-dimX = 11   # number of points for plotting the acquisition function only for p=1
-
 pos = np.array([[0., 0.],
                 [-4, -7],
                 [4, -7],
@@ -31,7 +29,9 @@ pos = np.array([[0., 0.],
                )
 
 
-def plot_acquisition_function(gamma_range, beta_range, dimX, num_level_p, gp, y_best):
+def plot_acquisition_function(gamma_range, beta_range, gp, y_best):
+    num_level_p = 1
+    dimX = 11   # number of grid-points for imshow
     gamma_arr = np.linspace(gamma_range[0], gamma_range[1], dimX)
     beta_arr = np.linspace(beta_range[0], beta_range[1], dimX)
     Xs = np.array(list(product(*[gamma_arr, beta_arr] * num_level_p)))
@@ -116,19 +116,18 @@ while j_bayes < Nbayes:
                    method='L-BFGS-B',
                    jac=gp.der_acq_function_optimize,
                    # options={'disp': True},
-                   tol=1e-6)
+                   tol=1e-9)
 #    print(res)
 
     X = res.x.astype(int)
     gammas = X[0::2]
     betas = X[1::2]
     # check that the values found for gamma and beta are bigger than 8ns
-    # cond_gamma = (gamma_range[0] <= gammas) & (gammas <= gamma_range[1])
-    # cond_beta = (beta_range[0] <= betas) & (betas <= beta_range[1])
     cond_gamma = (gammas <= 8)
     cond_beta = (betas <= 8)
     if (gammas <= 8).all() or (betas <= 8).all():
         print(f"{j_step}, {X}, out of range")
+        # continue the optimization by throwing away these values
         continue
 
     j_bayes += 1
@@ -142,33 +141,13 @@ while j_bayes < Nbayes:
         print(f"{j_bayes}, {j_step}, {X}, {Y:+.4f}, not accepted")
 
     # if num_level_p == 1:
-    #    plot_acquisition_function(gamma_range, beta_range, dimX, num_level_p, gp, y_best)
+    #    plot_acquisition_function(gamma_range, beta_range, gp, y_best)
 
     X_train.append(X)
     y_train.append(Y)
 
+print()
 print(x_best, y_best, f"after {Nwarmup} warmup steps and {j_bayes} bayesian optimization steps")
 
 count_dict,_ = quantum_loop(res.x, reg)
 plot_distribution(count_dict)
-
-
-# if 1:
-#     gamma_random = np.random.randint(gamma_range[0],
-#                                      gamma_range[1],
-#                                      size=num_level_p
-#                                      )
-#     beta_random = np.random.randint(beta_range[0],
-#                                     beta_range[1],
-#                                     size=num_level_p)
-#
-#     x0 = np.array([gamma_random, beta_random]).T.ravel()
-#
-#     res_simplex = minimize(gp.acq_function_optimize,
-#                    x0,
-#                    args=(y_best),
-#                    method='Nelder-Mead',
-#                    options={'disp': True},
-#                    tol=1e-6)
-#
-#     print(res_simplex)

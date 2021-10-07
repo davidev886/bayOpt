@@ -7,14 +7,20 @@ from scipy.optimize import minimize
 
 from utils.gauss_proc import *
 from utils.qaoa_pulser import *
+from utils.qaoa_qiskit import *
 
 np.random.seed(12)
 np.set_printoptions(precision=4, sign="+", suppress=True)
 
 params_kernel = {'sigma': 1, 'ell': 250}
+backend = 'QISKIT'
 
-gamma_range = [1000, 2000]   # extremes where to search for the values of gamma and beta
-beta_range = [1000, 2000]
+if backend == 'PULSER':
+    gamma_range = [500, 2000]   # extremes where to search for the values of gamma and beta
+    beta_range = [500, 2000]
+if backend == 'QISKIT':
+    gamma_range = [0, np.pi]   # extremes where to search for the values of gamma and beta
+    beta_range = [0, np.pi]
 
 num_level_p = 8
 
@@ -27,7 +33,6 @@ pos = np.array([[0., 0.],
                 [8, 6],
                 [-8, 6]]
                )
-
 
 def plot_acquisition_function(gamma_range, beta_range, gp, y_best):
     num_level_p = 1
@@ -52,30 +57,45 @@ def plot_acquisition_function(gamma_range, beta_range, gp, y_best):
     plt.colorbar()
     plt.show()
 
+def generate_random_points():
+    if backend == 'PULSER':
+        gamma_random = np.random.randint(gamma_range[0],
+                                         gamma_range[1],
+                                         size=num_level_p
+                                         )
+        beta_random = np.random.randint(beta_range[0],
+                                        beta_range[1],
+                                        size=num_level_p)
 
-# Grafo di pasqal originale
-# pos = np.array([[0,0], [0,10],[0,-10],[10,0],[-10,0]])
+        X = np.array([gamma_random, beta_random]).T.ravel()
 
+        Y = apply_qaoa(X, reg, G)
+    if backend == 'QISKIT':
+        gamma_random = np.random.random(size=num_level_p)*(gamma_range[1]-gamma_range[0]) + gamma_range[0]
+        beta_random = np.random.random(size=num_level_p)*(gamma_range[1]-gamma_range[0]) + gamma_range[0]
+
+        X = np.array([gamma_random, beta_random]).T.ravel()
+    return X
+
+# Grafo 
 G = pos_to_graph(pos)
+if backend == 'PULSER':
+    qubits = dict(enumerate(pos))
+    reg = Register(qubits)
 
-qubits = dict(enumerate(pos))
-reg = Register(qubits)
+
+
 
 # warm up stage
 y_best = np.inf
 y_train = []
 X_train = []
 for i in range(Nwarmup):
-    gamma_random = np.random.randint(gamma_range[0],
-                                     gamma_range[1],
-                                     size=num_level_p
-                                     )
-    beta_random = np.random.randint(beta_range[0],
-                                    beta_range[1],
-                                    size=num_level_p)
-
-    X = np.array([gamma_random, beta_random]).T.ravel()
-    Y = apply_qaoa(X, reg, G)
+    X = generate_random_points()
+    if backend == 'PULSER':
+        Y = apply_qaoa(X, reg, G)
+    if backend == 'QISKIT':
+        Y = QAOA(G, X)
 
     if Y <= y_best:
         x_best = X
@@ -100,15 +120,9 @@ while j_bayes < Nbayes:
     j_step += 1
     gp = gaussian_process(X_train, y_train, params=params_kernel)
 
-    gamma_random = np.random.randint(gamma_range[0],
-                                     gamma_range[1],
-                                     size=num_level_p
-                                     )
-    beta_random = np.random.randint(beta_range[0],
-                                    beta_range[1],
-                                    size=num_level_p)
+    X = generate_random_points()
 
-    x0 = np.array([gamma_random, beta_random]).T.ravel()
+    x0 = X
 
     res = minimize(gp.acq_function_optimize,
                    x0,
@@ -119,19 +133,26 @@ while j_bayes < Nbayes:
                    tol=1e-9)
 #    print(res)
 
-    X = res.x.astype(int)
+    if backend == 'PULSER':
+        X = res.x.astype(int)
+    if backend == 'QISKIT':
+        X = res.x
     gammas = X[0::2]
     betas = X[1::2]
     # check that the values found for gamma and beta are bigger than 8ns
-    cond_gamma = (gammas <= 8)
-    cond_beta = (betas <= 8)
-    if (gammas <= 8).all() or (betas <= 8).all():
-        print(f"{j_step}, {X}, out of range")
-        # continue the optimization by throwing away these values
-        continue
+    if backend == 'PULSER':
+        cond_gamma = (gammas <= 8)
+        cond_beta = (betas <= 8)
+        if (gammas <= 8).all() or (betas <= 8).all():
+            print(f"{j_step}, {X}, out of range")
+            # continue the optimization by throwing away these values
+            continue
 
     j_bayes += 1
-    Y = apply_qaoa(X, reg, G)
+    if backend == 'PULSER':
+        Y = apply_qaoa(X, reg, G)
+    if backend == 'QISKIT':
+        Y = QAOA(G, X)
 
     if Y <= y_best:
         x_best = X
@@ -149,5 +170,6 @@ while j_bayes < Nbayes:
 print()
 print(x_best, y_best, f"after {Nwarmup} warmup steps and {j_bayes} bayesian optimization steps")
 
-count_dict,_ = quantum_loop(res.x, reg)
-plot_distribution(count_dict)
+# measure with x_best
+# count_dict,_ = quantum_loop(res.x, reg)
+# plot_distribution(count_dict)

@@ -1,6 +1,7 @@
 import numpy as np
 import igraph
 import networkx as nx
+from networkx.linalg.graphmatrix import adjacency_matrix
 import matplotlib.pyplot as plt
 
 from pulser import Pulse, Sequence, Register, Simulation
@@ -10,15 +11,15 @@ from scipy.optimize import minimize
 
 
 def pos_to_graph(pos, d = Chadoq2.rydberg_blockade_radius(1)): #d is the rbr
-    g=igraph.Graph()
+    g = nx.Graph()
     edges=[]
     for n in range(len(pos)-1):
         for m in range(n+1, len(pos)):
             pwd = ((pos[m][0]-pos[n][0])**2+(pos[m][1]-pos[n][1])**2)**0.5
             if pwd < d:
                 edges.append([n,m]) # Below rbr, vertices are connected
-    g.add_vertices(len(pos))
-    g.add_edges(edges)
+    g.add_nodes_from(range(len(pos)))
+    g.add_edges_from(edges)
     return g
 
 
@@ -63,11 +64,11 @@ def get_cost_colouring(z,G,penalty=10):
        z: a binary colouring
        returns the cost of the colouring z, depending on the adjacency of the graph"""
     cost = 0
-    A = G.get_adjacency()
+    A = np.array(adjacency_matrix(G).todense())
     z = np.array(tuple(z),dtype=int)
     for i in range(len(z)):
         for j in range(i,len(z)):
-            cost += A[i][j]*z[i]*z[j]*penalty # if there's an edge between i,j and they are both in |1> state.
+            cost += A[i,j]*z[i]*z[j]*penalty # if there's an edge between i,j and they are both in |1> state.
 
     cost -= np.sum(z) #to count for the 0s instead of the 1s
     return cost
